@@ -20,3 +20,6 @@ frontend/next-dev-*.log
 frontend/next-dev-*.err.log
 frontend/next-dev-*.out.log
 *.tsbuildinfo
+
+# Local helper scripts (ne pas commiter)
+frontend/set-vercel-secrets.ps1
