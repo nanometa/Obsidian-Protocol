@@ -87,11 +87,12 @@ export async function GET(request: NextRequest) {
 
   let account: ReturnType<typeof privateKeyToAccount>;
   try {
-    // viem 2.x privateKeyToAccount accepts `0x${string}` (Hex).
-    // The explicit cast is required since normalizePrivateKey returns Hex but TypeScript
-    // may lose the brand in the Vercel bundle. We pass it directly as a template literal.
+    // Static imports of viem/accounts get bundled by Next.js in a way that breaks
+    // @noble/curves' runtime validation of the private key string.
+    // Dynamic import() preserves the original module path and avoids this issue.
+    const { privateKeyToAccount: pkToAccount } = await import("viem/accounts");
     const pkHex = `0x${botPrivateKey.replace(/^0x/i, "")}` as Hex;
-    account = privateKeyToAccount(pkHex);
+    account = pkToAccount(pkHex);
   } catch (pkErr) {
     return NextResponse.json({
       error: "Invalid TRIGGER_BOT_PRIVATE_KEY",
