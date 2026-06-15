@@ -1,0 +1,32 @@
+name: Obsidian Keeper Bot
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # Every hour
+  workflow_dispatch:       # Manual trigger too
+
+jobs:
+  keeper:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Keeper Bot
+        env:
+          PRIVATE_KEY: ${{ secrets.KEEPER_PRIVATE_KEY }}
+          NEXT_PUBLIC_ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          NEXT_PUBLIC_CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
+          NEXT_PUBLIC_EVENT_START_BLOCK: ${{ secrets.EVENT_START_BLOCK }}
+          KEEPER_EXECUTE: "true"
+        run: npm run keeper:arc

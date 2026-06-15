@@ -1,0 +1,28 @@
+{
+  "name": "obsidian-protocol",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dead man's switch vault protocol for encrypted public-interest disclosures on Arc Testnet.",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:arc": "hardhat run scripts/deploy.ts --network arc",
+    "keeper:dry-run": "hardhat run scripts/keeper.ts --network arc",
+    "keeper:arc": "hardhat run scripts/keeper.ts --network arc",
+    "verify:arc": "hardhat run scripts/verify.ts --network arc",
+    "frontend:dev": "npm.cmd --prefix frontend run dev",
+    "frontend:build": "npm.cmd --prefix frontend run build",
+    "frontend:typecheck": "npm.cmd --prefix frontend run typecheck"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.12",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@types/node": "^22.10.2",
+    "@types/node-fetch": "^2.6.13",
+    "dotenv": "^16.4.7",
+    "hardhat": "^2.22.19",
+    "node-fetch": "^2.7.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
+  }
+}
