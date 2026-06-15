@@ -62,16 +62,29 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "NEXT_PUBLIC_CONTRACT_ADDRESS is not configured." }, { status: 500 });
   }
 
-  const botPrivateKey = normalizePrivateKey(process.env.TRIGGER_BOT_PRIVATE_KEY);
+  const rawBotPk = process.env.TRIGGER_BOT_PRIVATE_KEY;
+  const botPrivateKey = normalizePrivateKey(rawBotPk);
   if (!botPrivateKey) {
-    return NextResponse.json({ error: "TRIGGER_BOT_PRIVATE_KEY is not configured or has invalid format.", rawLength: process.env.TRIGGER_BOT_PRIVATE_KEY?.length }, { status: 500 });
+    return NextResponse.json({
+      error: "TRIGGER_BOT_PRIVATE_KEY is not configured or has invalid format.",
+      rawLength: rawBotPk?.length,
+      rawFirst4: rawBotPk ? rawBotPk.substring(0, 4) : null,
+      rawLast4: rawBotPk ? rawBotPk.slice(-4) : null,
+      rawCharCodes: rawBotPk ? [...rawBotPk.substring(0, 6)].map(c => c.charCodeAt(0)) : null
+    }, { status: 500 });
   }
 
   let account: ReturnType<typeof privateKeyToAccount>;
   try {
     account = privateKeyToAccount(botPrivateKey);
   } catch (pkErr) {
-    return NextResponse.json({ error: "Invalid TRIGGER_BOT_PRIVATE_KEY", detail: pkErr instanceof Error ? pkErr.message : String(pkErr) }, { status: 500 });
+    return NextResponse.json({
+      error: "Invalid TRIGGER_BOT_PRIVATE_KEY",
+      detail: pkErr instanceof Error ? pkErr.message : String(pkErr),
+      pkLength: botPrivateKey.length,
+      pkFirst4: botPrivateKey.substring(0, 4),
+      pkLast4: botPrivateKey.slice(-4)
+    }, { status: 500 });
   }
   const publicClient = createPublicClient({
     chain: arcTestnet,
