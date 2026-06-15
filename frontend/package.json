@@ -16,6 +16,7 @@
     "@tanstack/react-query": "^5.62.8",
     "age-encryption": "^0.3.0",
     "dotenv": "^17.4.2",
+    "ethers": "^5.7.2",
     "lucide-react": "^0.468.0",
     "next": "14.2.35",
     "react": "18.3.1",

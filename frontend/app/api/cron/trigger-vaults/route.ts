@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ethers } from "ethers";
 import {
   createPublicClient,
-  createWalletClient,
   formatEther,
   getAbiItem,
   http,
@@ -9,19 +9,7 @@ import {
   type Address,
   type Hex
 } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
 import { OBSIDIAN_VAULT_ABI } from "@/lib/contract";
-
-// Helper: convert a 0x-hex string to Uint8Array without relying on viem's hexToBytes
-// (which has bundling issues on Vercel's Next.js production runtime)
-function hexStringToUint8Array(hex: Hex): Uint8Array {
-  const clean = hex.startsWith("0x") ? hex.slice(2) : hex;
-  const arr = new Uint8Array(clean.length / 2);
-  for (let i = 0; i < arr.length; i++) {
-    arr[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16);
-  }
-  return arr;
-}
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -76,38 +64,36 @@ export async function GET(request: NextRequest) {
   const rawBotPk = process.env.TRIGGER_BOT_PRIVATE_KEY;
   const botPrivateKey = normalizePrivateKey(rawBotPk);
   if (!botPrivateKey) {
-    return NextResponse.json({
-      error: "TRIGGER_BOT_PRIVATE_KEY is not configured or has invalid format.",
-      rawLength: rawBotPk?.length,
-      rawFirst4: rawBotPk ? rawBotPk.substring(0, 4) : null,
-      rawLast4: rawBotPk ? rawBotPk.slice(-4) : null,
-      rawCharCodes: rawBotPk ? [...rawBotPk.substring(0, 6)].map(c => c.charCodeAt(0)) : null
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "TRIGGER_BOT_PRIVATE_KEY is not configured or has invalid format.",
+        rawLength: rawBotPk?.length ?? 0
+      },
+      { status: 500 }
+    );
   }
 
-  let account: ReturnType<typeof privateKeyToAccount>;
+  let botWallet: ethers.Wallet;
   try {
-    // Static imports of viem/accounts get bundled by Next.js in a way that breaks
-    // @noble/curves' runtime validation of the private key string.
-    // Dynamic import() preserves the original module path and avoids this issue.
-    const { privateKeyToAccount: pkToAccount } = await import("viem/accounts");
-    const pkHex = `0x${botPrivateKey.replace(/^0x/i, "")}` as Hex;
-    account = pkToAccount(pkHex);
+    botWallet = new ethers.Wallet(botPrivateKey, new ethers.providers.JsonRpcProvider(ARC_RPC_URL));
   } catch (pkErr) {
-    return NextResponse.json({
-      error: "Invalid TRIGGER_BOT_PRIVATE_KEY",
-      detail: pkErr instanceof Error ? pkErr.message : String(pkErr),
-      pkLength: botPrivateKey.length,
-      pkFirst4: botPrivateKey.substring(0, 4),
-      pkLast4: botPrivateKey.slice(-4)
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "Invalid TRIGGER_BOT_PRIVATE_KEY",
+        detail: pkErr instanceof Error ? pkErr.message : String(pkErr)
+      },
+      { status: 500 }
+    );
   }
+
+  const botAddress = botWallet.address as Address;
+  const vaultWithBot = new ethers.Contract(
+    contractAddress,
+    ["function activateTrigger(address user) external"],
+    botWallet
+  );
+
   const publicClient = createPublicClient({
-    chain: arcTestnet,
-    transport: http(ARC_RPC_URL)
-  });
-  const walletClient = createWalletClient({
-    account,
     chain: arcTestnet,
     transport: http(ARC_RPC_URL)
   });
@@ -122,14 +108,19 @@ export async function GET(request: NextRequest) {
     readBigIntEnv("NEXT_PUBLIC_EVENT_START_BLOCK", FALLBACK_EVENT_START_BLOCK)
   );
   const capacity = chunkSize * BigInt(maxChunks);
-  const fromBlock = latestBlock - configuredStartBlock + 1n > capacity ? latestBlock - capacity + 1n : configuredStartBlock;
+  const fromBlock =
+    configuredStartBlock > latestBlock
+      ? latestBlock
+      : latestBlock - configuredStartBlock + 1n > capacity
+        ? latestBlock - capacity + 1n
+        : configuredStartBlock;
 
-  const botBalance = await publicClient.getBalance({ address: account.address });
+  const botBalance = await publicClient.getBalance({ address: botAddress });
   if (!dryRun && botBalance === 0n) {
     return NextResponse.json(
       {
         error: "Trigger bot wallet has no Arc USDC for gas.",
-        bot: account.address,
+        bot: botAddress,
         balance: "0"
       },
       { status: 500 }
@@ -163,19 +154,10 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-      const txHash = await walletClient.writeContract({
-        address: contractAddress,
-        abi: OBSIDIAN_VAULT_ABI,
-        functionName: "activateTrigger",
-        args: [owner]
-      });
+      const tx = await vaultWithBot.activateTrigger(owner);
+      await tx.wait(readNumberEnv("AUTO_TRIGGER_CONFIRMATIONS", 1));
 
-      await publicClient.waitForTransactionReceipt({
-        hash: txHash,
-        confirmations: readNumberEnv("AUTO_TRIGGER_CONFIRMATIONS", 1)
-      });
-
-      results.push({ owner, status: "triggered", txHash });
+      results.push({ owner, status: "triggered", txHash: tx.hash as Hex });
     } catch (caught) {
       results.push({
         owner,
@@ -188,7 +170,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     ok: true,
     mode: dryRun ? "dry-run" : "execute",
-    bot: account.address,
+    bot: botAddress,
     botBalance: `${Number(formatEther(botBalance)).toFixed(6)} USDC`,
     contract: contractAddress,
     scannedBlocks: {
