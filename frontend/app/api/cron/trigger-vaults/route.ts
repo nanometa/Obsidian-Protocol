@@ -64,10 +64,15 @@ export async function GET(request: NextRequest) {
 
   const botPrivateKey = normalizePrivateKey(process.env.TRIGGER_BOT_PRIVATE_KEY);
   if (!botPrivateKey) {
-    return NextResponse.json({ error: "TRIGGER_BOT_PRIVATE_KEY is not configured." }, { status: 500 });
+    return NextResponse.json({ error: "TRIGGER_BOT_PRIVATE_KEY is not configured or has invalid format.", rawLength: process.env.TRIGGER_BOT_PRIVATE_KEY?.length }, { status: 500 });
   }
 
-  const account = privateKeyToAccount(botPrivateKey);
+  let account: ReturnType<typeof privateKeyToAccount>;
+  try {
+    account = privateKeyToAccount(botPrivateKey);
+  } catch (pkErr) {
+    return NextResponse.json({ error: "Invalid TRIGGER_BOT_PRIVATE_KEY", detail: pkErr instanceof Error ? pkErr.message : String(pkErr) }, { status: 500 });
+  }
   const publicClient = createPublicClient({
     chain: arcTestnet,
     transport: http(ARC_RPC_URL)
@@ -218,8 +223,9 @@ async function findVaultOwners(
 function normalizePrivateKey(value: string | undefined): Hex | null {
   if (!value) return null;
 
-  const trimmed = value.trim();
-  const withPrefix = trimmed.startsWith("0x") ? trimmed : `0x${trimmed}`;
+  // Strip ALL whitespace and control characters (\r, \n, spaces, tabs)
+  const cleaned = value.replace(/[\s\r\n\t]/g, "");
+  const withPrefix = cleaned.startsWith("0x") ? cleaned : `0x${cleaned}`;
   return /^0x[a-fA-F0-9]{64}$/.test(withPrefix) ? (withPrefix as Hex) : null;
 }
 
