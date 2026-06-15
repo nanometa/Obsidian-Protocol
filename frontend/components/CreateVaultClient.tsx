@@ -62,6 +62,7 @@ export function CreateVaultClient() {
   const [clipboardCountdown, setClipboardCountdown] = useState<number | null>(null);
   const [showDeployConfirm, setShowDeployConfirm] = useState(false);
   const [showSessionWarning, setShowSessionWarning] = useState(false);
+  const [existingVault, setExistingVault] = useState<boolean | null>(null);
   const clipboardClearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [deployStatus, setDeployStatus] = useState<SmartDeployStatus>({
     stage: "idle",
@@ -231,6 +232,11 @@ export function CreateVaultClient() {
   function requestDeployVault() {
     setError(null);
 
+    if (existingVault) {
+      setError("This wallet already has a vault. Open your dashboard to manage it.");
+      return;
+    }
+
     if (!deployReady) {
       setError("Complete all READY TO DEPLOY checks first.");
       return;
@@ -254,6 +260,11 @@ export function CreateVaultClient() {
 
     if (!OBSIDIAN_VAULT_ADDRESS || !isAddress(OBSIDIAN_VAULT_ADDRESS)) {
       setError("NEXT_PUBLIC_CONTRACT_ADDRESS is not configured.");
+      return;
+    }
+
+    if (existingVault) {
+      setError("This wallet already has a vault. Open your dashboard to manage it.");
       return;
     }
 
@@ -426,6 +437,36 @@ export function CreateVaultClient() {
       setIpfs(null);
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function checkExistingVault() {
+      if (!address || !publicClient || !OBSIDIAN_VAULT_ADDRESS || !isAddress(OBSIDIAN_VAULT_ADDRESS)) {
+        setExistingVault(null);
+        return;
+      }
+
+      try {
+        const result = (await publicClient.readContract({
+          address: OBSIDIAN_VAULT_ADDRESS,
+          abi: OBSIDIAN_VAULT_ABI,
+          functionName: "hasVault",
+          args: [address]
+        })) as boolean;
+
+        if (!cancelled) setExistingVault(Boolean(result));
+      } catch {
+        if (!cancelled) setExistingVault(null);
+      }
+    }
+
+    void checkExistingVault();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [address, publicClient]);
 
   useEffect(() => {
     let cancelled = false;
@@ -662,22 +703,44 @@ export function CreateVaultClient() {
               <SummaryRow label="GAS ESTIMATE" value={isEstimatingGas ? "ESTIMATING..." : gasEstimate} />
               <SummaryRow label="SPONSOR" value="COMING SOON" />
               <DeployChecklist checks={deployChecks} />
+              {existingVault ? (
+                <div className="terminal-border space-y-2 border-obsidian-warning/60 bg-typeui-night p-3 text-xs text-typeui-cream">
+                  <div className="flex items-center gap-2 font-bold uppercase text-obsidian-warning">
+                    <AlertTriangle size={15} aria-hidden="true" />
+                    Vault already exists
+                  </div>
+                  <p className="leading-5 text-obsidian-dim">
+                    This wallet already has a vault. Each address can hold only one vault. Open your dashboard to manage it,
+                    or connect a different wallet to create a new one.
+                  </p>
+                  {address ? (
+                    <Link
+                      href={`/vault/${address}`}
+                      className="terminal-border inline-flex min-h-10 items-center justify-center px-3 font-bold uppercase text-obsidian-green hover:bg-obsidian-green hover:text-obsidian-black"
+                    >
+                      OPEN MY DASHBOARD
+                    </Link>
+                  ) : null}
+                </div>
+              ) : null}
               <DeployProgress status={deployStatus} txHash={txHash} onRetry={requestDeployVault} />
               <button
                 type="button"
                 onClick={requestDeployVault}
-                disabled={isSmartDeployBusy || uploading || verifyingIpfs || !deployReady}
+                disabled={isSmartDeployBusy || uploading || verifyingIpfs || !deployReady || Boolean(existingVault)}
                 className="terminal-border inline-flex min-h-12 w-full items-center justify-center gap-2 bg-obsidian-green px-4 font-bold text-obsidian-black hover:bg-obsidian-white disabled:cursor-not-allowed disabled:opacity-50"
                 title="Smart deploy vault"
               >
                 {isSmartDeployBusy || verifyingIpfs ? <Loader2 className="animate-spin" size={18} /> : null}
-                {verifyingIpfs
-                  ? "VERIFYING IPFS..."
-                  : isSmartDeployBusy
-                    ? deployStatus.stage === "checking"
-                      ? "CHECKING BALANCE..."
-                      : "SIGN DEPLOY..."
-                    : "DEPLOY VAULT"}
+                {existingVault
+                  ? "VAULT ALREADY EXISTS"
+                  : verifyingIpfs
+                    ? "VERIFYING IPFS..."
+                    : isSmartDeployBusy
+                      ? deployStatus.stage === "checking"
+                        ? "CHECKING BALANCE..."
+                        : "SIGN DEPLOY..."
+                      : "DEPLOY VAULT"}
               </button>
               {txHash ? (
                 <div className="terminal-border p-3 text-xs">
