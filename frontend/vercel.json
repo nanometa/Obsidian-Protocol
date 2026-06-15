@@ -6,7 +6,7 @@
   "crons": [
     {
       "path": "/api/cron/trigger-vaults",
-      "schedule": "*/10 * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
