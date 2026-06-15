@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { AlertTriangle, Check, Copy, ExternalLink, Gift, KeyRound, Loader2, Plus, ShieldAlert, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Address, Hash } from "viem";
@@ -614,7 +613,7 @@ export function CreateVaultClient() {
                   NGO SPONSORSHIP CODE
                   <span className="border border-obsidian-green/40 px-2 py-1 text-[10px] text-obsidian-green">COMING SOON</span>
                 </div>
-                <p className="leading-5 text-obsidian-dim">Contact security@obsidian-protocol.xyz for organizational access.</p>
+                <p className="leading-5 text-obsidian-dim">Contact security@obsidian-tocol.pro for organizational access.</p>
               </div>
             </div>
           </Terminal>
@@ -754,20 +753,10 @@ function NetworkStatusBanner({
               <AlertTriangle size={17} aria-hidden="true" />
               Connect your wallet to continue
             </div>
-            <p className="mt-1 text-xs uppercase text-obsidian-dim">Vault deployment requires an Arc Testnet wallet.</p>
+            <p className="mt-1 text-xs uppercase text-obsidian-dim">
+              Vault deployment requires an Arc Testnet wallet. Use CONNECT WALLET in the header above.
+            </p>
           </div>
-          <ConnectButton.Custom>
-            {({ mounted, openConnectModal }) => (
-              <button
-                type="button"
-                disabled={!mounted}
-                onClick={openConnectModal}
-                className="terminal-border inline-flex min-h-10 items-center justify-center px-3 text-xs font-bold uppercase text-obsidian-green hover:bg-obsidian-green hover:text-obsidian-black disabled:opacity-50"
-              >
-                CONNECT WALLET
-              </button>
-            )}
-          </ConnectButton.Custom>
         </div>
       </div>
     );
