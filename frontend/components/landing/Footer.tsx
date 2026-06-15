@@ -6,9 +6,12 @@ const platformLinks = [
   { label: "Documentation", href: "/docs", internal: true }
 ] as const;
 
+const explorerUrl = process.env.NEXT_PUBLIC_EXPLORER_URL?.replace(/\/$/, "") || "https://testnet.arcscan.app";
+const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0xA0C549cDAeA455623E20244E15E14c1320017922";
+
 const technicalLinks = [
-  { label: "Smart Contract", href: "https://testnet.arcscan.app" },
-  { label: "GitHub", href: "https://github.com" }
+  { label: "Smart Contract", href: `${explorerUrl}/address/${contractAddress}` },
+  { label: "GitHub", href: "https://github.com/nanometa/Obsidian-Protocol" }
 ] as const;
 
 const resourceLinks = [
@@ -22,7 +25,7 @@ export function Footer() {
     <footer className="bg-typeui-ember px-4 py-12 text-typeui-cream sm:px-6 lg:px-8">
       <div data-reveal className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1.4fr_2fr]">
         <div>
-          <h2 className="text-2xl font-bold uppercase">OBSIDIAN PROTOCOL</h2>
+          <h2 className="text-2xl font-bold uppercase">OBSIDIAN-TOCOL</h2>
           <p className="mt-3 max-w-sm text-base leading-7 text-typeui-cream">Built for those who cannot stay silent.</p>
         </div>
         <div className="grid gap-8 sm:grid-cols-3">
