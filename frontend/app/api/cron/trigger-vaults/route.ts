@@ -12,6 +12,17 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import { OBSIDIAN_VAULT_ABI } from "@/lib/contract";
 
+// Helper: convert a 0x-hex string to Uint8Array without relying on viem's hexToBytes
+// (which has bundling issues on Vercel's Next.js production runtime)
+function hexStringToUint8Array(hex: Hex): Uint8Array {
+  const clean = hex.startsWith("0x") ? hex.slice(2) : hex;
+  const arr = new Uint8Array(clean.length / 2);
+  for (let i = 0; i < arr.length; i++) {
+    arr[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16);
+  }
+  return arr;
+}
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -76,7 +87,11 @@ export async function GET(request: NextRequest) {
 
   let account: ReturnType<typeof privateKeyToAccount>;
   try {
-    account = privateKeyToAccount(botPrivateKey);
+    // viem 2.x privateKeyToAccount accepts `0x${string}` (Hex).
+    // The explicit cast is required since normalizePrivateKey returns Hex but TypeScript
+    // may lose the brand in the Vercel bundle. We pass it directly as a template literal.
+    const pkHex = `0x${botPrivateKey.replace(/^0x/i, "")}` as Hex;
+    account = privateKeyToAccount(pkHex);
   } catch (pkErr) {
     return NextResponse.json({
       error: "Invalid TRIGGER_BOT_PRIVATE_KEY",
