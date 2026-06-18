@@ -654,7 +654,7 @@ export function CreateVaultClient() {
                   NGO SPONSORSHIP CODE
                   <span className="border border-obsidian-green/40 px-2 py-1 text-[10px] text-obsidian-green">COMING SOON</span>
                 </div>
-                <p className="leading-5 text-obsidian-dim">Contact security@obsidian-tocol.pro for organizational access.</p>
+                <p className="leading-5 text-obsidian-dim">Contact security@obsidian-protocol.xyz for organizational access.</p>
               </div>
             </div>
           </Terminal>
